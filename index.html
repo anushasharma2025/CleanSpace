@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIT CleanSpace Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 50%, #bcccdc 100%); }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        }
+        .tab-active { border-bottom: 3px solid #0284c7; color: #0284c7; font-weight: bold; }
+        .tab-inactive { color: #64748b; font-weight: 500; }
+        #new-user-fields { transition: max-height 0.4s ease-out, opacity 0.4s ease-out; overflow: hidden; max-height: 0; opacity: 0; }
+        #new-user-fields.expanded { max-height: 300px; opacity: 1; }
+        
+        /* Custom Scrollbar for history */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center font-sans p-4 relative">
+
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-20 pointer-events-none">
+    <i class="fa-solid fa-users text-[30rem] absolute -bottom-20 -left-20 text-blue-200"></i>
+    <i class="fa-solid fa-broom text-[20rem] absolute top-10 -right-10 text-blue-300"></i>
+</div>
+
+<audio id="sfx-chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+<audio id="sfx-success" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"></audio>
+
+<div class="glass-panel p-8 rounded-3xl w-full max-w-md relative z-10">
+    
+    <div id="login-view">
+        <div class="text-center mb-6">
+            <div class="text-5xl text-sky-600 mb-3"><i class="fa-solid fa-sparkles"></i></div>
+            <h2 class="text-3xl font-extrabold text-slate-800">CleanSpace</h2>
+            <p class="text-sm text-slate-500">Smart Hostel Services</p>
+        </div>
+
+        <div class="flex border-b border-slate-200 mb-6 cursor-pointer">
+            <div id="tab-student" onclick="switchTab('student')" class="w-1/2 text-center pb-2 tab-active transition"><i class="fa-solid fa-user-graduate"></i> Student</div>
+            <div id="tab-staff" onclick="switchTab('staff')" class="w-1/2 text-center pb-2 tab-inactive transition"><i class="fa-solid fa-user-gear"></i> Staff</div>
+        </div>
+
+        <div id="form-student" class="space-y-3">
+            <input type="email" id="s_email" placeholder="e.g. name@vit.edu" class="w-full p-3 border rounded-xl bg-white focus:ring-2 focus:ring-sky-400 outline-none">
+            
+            <div id="new-user-fields" class="space-y-3 pt-2 border-t border-slate-100 mt-2">
+                <p class="text-xs text-sky-700 font-bold bg-sky-50 p-2 rounded-lg border border-sky-100"><i class="fa-solid fa-user-plus"></i> New User Detected! Please complete profile:</p>
+                <input type="text" id="s_name" placeholder="Full Name" class="w-full p-3 border rounded-xl bg-white outline-none">
+                <div class="flex space-x-3">
+                    <select id="s_block" class="w-1/2 p-3 border rounded-xl bg-white outline-none text-sm">
+                        <option value="" disabled selected>Select Block</option>
+                        <optgroup label="Men's Hostel">
+                            <option value="Q">Q Block</option><option value="P">P Block</option>
+                            <option value="M">M Block</option><option value="N">N Block</option>
+                            <option value="S">S Block</option><option value="T">T Block</option>
+                        </optgroup>
+                        <optgroup label="Women's Hostel">
+                            <option value="G">G Block</option><option value="J">J Block</option>
+                            <option value="H">H Block</option>
+                        </optgroup>
+                    </select>
+                    <input type="text" id="s_room" placeholder="Room No" class="w-1/2 p-3 border rounded-xl bg-white outline-none">
+                </div>
+            </div>
+            <button onclick="studentAuth()" class="w-full mt-4 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Continue</button>
+        </div>
+
+        <div id="form-staff" class="hidden space-y-4 text-center">
+            <p class="text-xs text-slate-500 mb-2">Use IDs <b>m_01</b> to <b>m_10</b> (Men) or <b>f_01</b> to <b>f_10</b> (Women)</p>
+            <input type="text" id="c_id" placeholder="Enter Staff ID" class="w-full p-3 border rounded-xl bg-white focus:ring-2 focus:ring-sky-400 outline-none text-center font-bold uppercase">
+            <button onclick="staffAuth()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl shadow-lg transition"><i class="fa-solid fa-id-card"></i> Login to Queue</button>
+        </div>
+    </div>
+
+    <div id="student-view" class="hidden">
+        <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Student Portal</h2>
+                <p id="student-display-info" class="text-xs font-bold text-sky-600"></p>
+            </div>
+            <button onclick="logout()" class="text-sm text-red-500 font-bold"><i class="fa-solid fa-power-off"></i> Logout</button>
+        </div>
+
+        <div class="flex bg-slate-100 p-1 rounded-lg mb-4">
+            <button id="btn-new-req" onclick="toggleStudentView('new')" class="w-1/2 text-sm font-bold py-2 rounded-md bg-white shadow-sm text-sky-700 transition">New Request</button>
+            <button id="btn-history" onclick="toggleStudentView('history')" class="w-1/2 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700 transition">History</button>
+        </div>
+        
+        <div id="request-form-area">
+            <div id="request-form" class="space-y-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <label class="block text-sm font-bold text-slate-700">Select Service:</label>
+                <select id="reason" onchange="playSound('chime')" class="w-full p-3 border border-slate-200 rounded-xl outline-none bg-slate-50">
+                    <option value="Make My Room / Bed">Make My Room / Bed</option>
+                    <option value="Regular Sweeping & Mopping">Regular Sweeping & Mopping</option>
+                    <option value="Dustbin Clearance">Dustbin Clearance</option>
+                </select>
+                <button onclick="sendRequest()" class="w-full mt-4 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl shadow-md transition">Submit Request</button>
+            </div>
+            
+            <div id="active-request-area" class="hidden mt-4 text-center">
+                <div class="bg-sky-50 border border-sky-200 p-6 rounded-2xl shadow-sm">
+                    <p class="text-sky-800 font-extrabold text-xl">Request Sent!</p>
+                    <p class="text-sm text-sky-600 mt-2"><i class="fa-solid fa-spinner fa-spin"></i> Waiting for staff to pick up.</p>
+                    <button onclick="resetStudentPortal()" class="mt-4 text-xs font-bold text-sky-700 bg-sky-100 px-3 py-2 rounded-lg hover:bg-sky-200">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Menu
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="student-history-area" class="hidden max-h-72 overflow-y-auto space-y-2 pr-2">
+            <p class="text-center text-sm text-slate-400 py-4">Loading history...</p>
+        </div>
+    </div>
+
+    <div id="staff-view" class="hidden">
+        <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-4">
+            <h2 class="text-xl font-bold text-slate-800">Available Jobs</h2>
+            <button onclick="logout()" class="text-sm text-red-500 font-bold"><i class="fa-solid fa-power-off"></i> Logout</button>
+        </div>
+
+        <div id="staff-requests-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+            </div>
+
+        <div id="active-job-view" class="hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-lg mt-2 text-center">
+            <h3 class="font-extrabold text-slate-800 text-lg mb-2">Current Job</h3>
+            <p id="job-details" class="text-slate-600 font-bold mb-4 bg-slate-50 py-2 rounded-lg border border-slate-100"></p>
+            
+            <div id="qrcode" class="flex justify-center mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100"></div>
+            
+            <div class="space-y-2 mt-4">
+                <button onclick="manualComplete()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow transition"><i class="fa-solid fa-check-circle"></i> Mark Room Cleaned</button>
+                <button onclick="passJob()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-lg transition"><i class="fa-solid fa-forward"></i> Too Far? Pass Job</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:8000";
+    let currentUser = {};
+    let currentReqId = null;
+
+    function playSound(type) { 
+        try {
+            const audio = document.getElementById(`sfx-${type}`);
+            audio.currentTime = 0;
+            audio.play().catch(()=>{}); 
+        } catch(e) {}
+    }
+
+    function switchTab(tab) {
+        document.getElementById("form-student").classList.add("hidden");
+        document.getElementById("form-staff").classList.add("hidden");
+        document.getElementById("tab-student").className = "w-1/2 text-center pb-2 tab-inactive transition";
+        document.getElementById("tab-staff").className = "w-1/2 text-center pb-2 tab-inactive transition";
+        document.getElementById(`form-${tab}`).classList.remove("hidden");
+        document.getElementById(`tab-${tab}`).className = "w-1/2 text-center pb-2 tab-active transition";
+    }
+
+    // --- STUDENT LOGIC ---
+    async function studentAuth() {
+        const email = document.getElementById("s_email").value;
+        const name = document.getElementById("s_name").value;
+        const block = document.getElementById("s_block").value;
+        const room = document.getElementById("s_room").value;
+        
+        if(!email) { alert("Please enter an email"); return; }
+
+        try {
+            const res = await fetch(`${API_URL}/auth/student`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, name: name||null, block: block||null, room: room||null })
+            });
+            const data = await res.json();
+
+            if(res.status === 400) {
+                document.getElementById("new-user-fields").classList.add("expanded");
+                playSound('chime');
+                return;
+            }
+            currentUser = data.data;
+        } catch(err) {
+            alert("Error: Cannot connect to Backend Database. Make sure Python is running.");
+            return;
+        }
+
+        document.getElementById("login-view").classList.add("hidden");
+        document.getElementById("student-view").classList.remove("hidden");
+        document.getElementById("student-display-info").innerText = `${currentUser.block} Block | Room ${currentUser.room}`;
+        playSound('success');
+    }
+
+    async function sendRequest() {
+        const reason = document.getElementById("reason").value;
+        const payload = { email: currentUser.email, reason: reason, is_emergency: false };
+        
+        try {
+            const res = await fetch(`${API_URL}/request`, { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify(payload) 
+            });
+            if(!res.ok) throw new Error("API Error");
+        } catch(err) {
+            alert("Error sending request to database.");
+            return;
+        }
+
+        document.getElementById("request-form").classList.add("hidden");
+        document.getElementById("active-request-area").classList.remove("hidden");
+        playSound('chime');
+    }
+
+    function resetStudentPortal() {
+        document.getElementById("active-request-area").classList.add("hidden");
+        document.getElementById("request-form").classList.remove("hidden");
+    }
+
+    // Student Toggle: Form vs History
+    function toggleStudentView(view) {
+        if(view === 'new') {
+            document.getElementById("btn-new-req").className = "w-1/2 text-sm font-bold py-2 rounded-md bg-white shadow-sm text-sky-700 transition";
+            document.getElementById("btn-history").className = "w-1/2 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700 transition";
+            document.getElementById("student-history-area").classList.add("hidden");
+            document.getElementById("request-form-area").classList.remove("hidden");
+        } else {
+            document.getElementById("btn-history").className = "w-1/2 text-sm font-bold py-2 rounded-md bg-white shadow-sm text-sky-700 transition";
+            document.getElementById("btn-new-req").className = "w-1/2 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700 transition";
+            document.getElementById("request-form-area").classList.add("hidden");
+            document.getElementById("student-history-area").classList.remove("hidden");
+            loadStudentHistory();
+        }
+    }
+
+    async function loadStudentHistory() {
+        const container = document.getElementById("student-history-area");
+        container.innerHTML = `<p class="text-center text-sm text-slate-400 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Fetching...</p>`;
+        
+        try {
+            const res = await fetch(`${API_URL}/student/history/${currentUser.email}`);
+            const history = await res.json();
+            container.innerHTML = "";
+
+            if(history.length === 0) {
+                container.innerHTML = `<p class="text-center text-sm text-slate-500 py-4">No past requests found.</p>`;
+                return;
+            }
+
+            history.forEach(item => {
+                let badgeColor = "bg-yellow-100 text-yellow-700";
+                if(item.status === "ACCEPTED") badgeColor = "bg-blue-100 text-blue-700";
+                if(item.status === "COMPLETED") badgeColor = "bg-green-100 text-green-700";
+
+                container.innerHTML += `
+                    <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="font-bold text-slate-800 text-sm">${item.reason}</p>
+                            <span class="text-[10px] font-extrabold px-2 py-1 rounded ${badgeColor}">${item.status}</span>
+                        </div>
+                        <p class="text-xs text-slate-500"><i class="fa-regular fa-clock"></i> Requested: ${item.time_req}</p>
+                        ${item.time_done ? `<p class="text-xs text-slate-500"><i class="fa-solid fa-check"></i> Done: ${item.time_done}</p>` : ''}
+                    </div>
+                `;
+            });
+        } catch (err) {
+            container.innerHTML = `<p class="text-center text-sm text-red-500 py-4">Error loading history.</p>`;
+        }
+    }
+
+    // --- STAFF LOGIC ---
+    async function staffAuth() {
+        const id = document.getElementById("c_id").value.toLowerCase();
+        if(!id) return;
+        
+        currentUser = { id: id };
+        document.getElementById("login-view").classList.add("hidden");
+        document.getElementById("staff-view").classList.remove("hidden");
+        playSound('success');
+        
+        loadStaffQueue();
+        // Optional: Auto-refresh the queue every 10 seconds
+        setInterval(loadStaffQueue, 10000); 
+    }
+
+    async function loadStaffQueue() {
+        // If they are currently looking at an active job, don't interrupt them with a list refresh
+        if(currentReqId) return; 
+
+        const listContainer = document.getElementById("staff-requests-list");
+        
+        try {
+            const res = await fetch(`${API_URL}/staff/pool/${currentUser.id}`);
+            const jobs = await res.json();
+            
+            listContainer.innerHTML = ""; 
+
+            if(jobs.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-slate-500 py-4"><i class="fa-solid fa-mug-hot"></i> No active jobs right now!</p>`;
+                return;
+            }
+
+            jobs.forEach(job => {
+                const isAcceptedByMe = job.status === 'ACCEPTED';
+                listContainer.innerHTML += `
+                    <div class="bg-white border ${isAcceptedByMe ? 'border-sky-400 bg-sky-50' : 'border-slate-200'} p-4 rounded-xl flex justify-between items-center shadow-sm mb-3">
+                        <div>
+                            <p class="font-bold text-slate-800">${job.block} Block - Room ${job.room}</p>
+                            <p class="text-xs text-slate-500"><i class="fa-solid fa-broom text-sky-500"></i> ${job.reason}</p>
+                            ${isAcceptedByMe ? `<span class="text-[10px] font-extrabold px-2 py-1 rounded bg-sky-200 text-sky-800 mt-1 inline-block">Already Accepted</span>` : ''}
+                        </div>
+                        <button onclick="acceptJob('${job.req_id}', '${job.block} Block - Room ${job.room}')" class="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-sky-700 transition shadow-sm">
+                            ${isAcceptedByMe ? 'View' : 'Accept'}
+                        </button>
+                    </div>
+                `;
+            });
+        } catch(err) {
+            listContainer.innerHTML = `<p class="text-center text-sm text-red-500 py-4">Lost connection to server.</p>`;
+        }
+    }
+
+    async function acceptJob(reqId, details) {
+        currentReqId = reqId;
+        
+        // Tell backend we accepted it
+        await fetch(`${API_URL}/staff/accept/${reqId}/${currentUser.id}`, { method: "POST" });
+
+        document.getElementById("staff-requests-list").classList.add("hidden");
+        document.getElementById("active-job-view").classList.remove("hidden");
+        document.getElementById("job-details").innerText = details;
+
+        document.getElementById("qrcode").innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), {
+            text: `cleanspace://verify/${reqId}`, width: 140, height: 140, colorDark : "#0f172a", colorLight : "#f8fafc"
+        });
+        playSound('chime');
+    }
+
+    async function passJob() {
+        // Tell backend to throw it back in the pool
+        await fetch(`${API_URL}/staff/pass/${currentReqId}`, { method: "POST" });
+        
+        currentReqId = null;
+        document.getElementById("active-job-view").classList.add("hidden");
+        document.getElementById("staff-requests-list").classList.remove("hidden");
+        playSound('chime');
+        loadStaffQueue(); // Instantly refresh UI
+    }
+
+    async function manualComplete() {
+        // Tell backend it's fully done
+        await fetch(`${API_URL}/complete/${currentReqId}`, { method: "POST" });
+        
+        playSound('success');
+        currentReqId = null;
+        
+        document.getElementById("active-job-view").classList.add("hidden");
+        document.getElementById("staff-requests-list").classList.remove("hidden");
+        loadStaffQueue(); // Instantly refresh UI - the job will now be GONE!
+    }
+
+    function logout() { location.reload(); }
+</script>
+</body>
+</html>
